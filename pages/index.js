@@ -17,10 +17,12 @@ export default function Home() {
   const [image, setImage] = useState();
   const [creature, setCreature] = useState({});
   const [isCopied, setIsCopied] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [requestCompleted, setRequestCompleted] = useState(false);
 
   async function onSubmit(event) {
     event.preventDefault();
-    setLoading(true); // Set loading to true when the form is submitted
+    setLoading(true);
     const randomValues = generateRandomValues();
 
     try {
@@ -49,42 +51,47 @@ export default function Home() {
       setResult(<CreatureCard creature={creature} />);
       setCreature(creature);
 
-      // New code: Generate image
-      try {
-        const imageResponse = await fetch("/api/generateImage", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            imagePrompt: creature.imagePrompt,
-          }),
-        });
-
-        const imageData = await imageResponse.json();
-        if (imageResponse.status !== 200) {
-          throw new Error(
-            imageData.error
-              ? `Image request failed with message: ${imageData.error.message}`
-              : `Image request failed with status ${imageResponse.status}`
-          );
-        }
-
-        const imageUrl = imageData.imageUrl;
-        setImage(imageUrl);
-      } catch (error) {
-        console.error(`Error with OpenAI API request: ${error}`);
-        alert(error.message);
-      }
       setChallengeRating("");
       setNumberOfPlayers("");
       setPlayerLevel("");
     } catch (error) {
-      // Consider implementing your own error handling logic here
       console.error(error);
       alert(error.message);
     } finally {
-      setLoading(false); // Set loading to false when the request is done
+      setLoading(false);
+      setRequestCompleted(true);
+    }
+  }
+
+  async function loadImage() {
+    setImageLoading(true);
+    try {
+      const imageResponse = await fetch("/api/generateImage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imagePrompt: creature.imagePrompt,
+        }),
+      });
+
+      const imageData = await imageResponse.json();
+      if (imageResponse.status !== 200) {
+        throw new Error(
+          imageData.error
+            ? `Image request failed with message: ${imageData.error.message}`
+            : `Image request failed with status ${imageResponse.status}`
+        );
+      }
+
+      const imageUrl = imageData.imageUrl;
+      setImage(imageUrl);
+    } catch (error) {
+      console.error(`Error with OpenAI API request: ${error}`);
+      alert(error.message);
+    } finally {
+      setImageLoading(false);
     }
   }
 
@@ -170,7 +177,7 @@ export default function Home() {
       <main className={styles.main}>
         <GiDoubleDragon className='text-6xl' />
         <h3>Create DND Monster</h3>
-        <form onSubmit={onSubmit}>
+        <form onSubmit={onSubmit} className='md:hidden'>
           <div className='flex flex-col space-y-4'>
             <input
               type='number'
@@ -195,16 +202,19 @@ export default function Home() {
         ) : (
           <div
             className={`my-24 ${
-              image ? `bg-gray-900 shadow-lg` : ""
+              requestCompleted && "bg-gray-900 shadow-lg"
             } rounded-md p-6`}>
             <div className='grid grid-cols-1 md:grid-cols-2 max-w-4xl gap-6 px-4 md:px-2 leading-none'>
               <div className='text-gray-300 flex-col space-y-4'>
                 <h2 className='text-2xl'>{creature.name}</h2>
                 <p className='leading-5'>{creature.description}</p>
 
-                {image && (
+                {image ? (
                   <div>
-                    <div className='flex items-center justify-between bg-gray-600 rounded-t-md'>
+                    <div
+                      className={`flex items-center justify-between ${
+                        image ? "bg-gray-600 rounded-t-md" : ""
+                      }`}>
                       <p className='w-full p-1 px-2'>DALLE-2</p>
                       <button
                         onClick={copyToClipboard}
@@ -222,7 +232,20 @@ export default function Home() {
                       className='h-72 w-full rounded-md rounded-t-none transform shadow-lg mb-3'
                     />
                   </div>
+                ) : (
+                  requestCompleted &&
+                  !image && (
+                    <div className='flex items-center justify-center h-72'>
+                      <button
+                        className='bg-gray-600 px-3 py-2'
+                        onClick={loadImage}
+                        disabled={imageLoading}>
+                        {imageLoading ? "Loading Image..." : "Fetch Image"}
+                      </button>
+                    </div>
+                  )
                 )}
+
                 {/* {creature.imagePrompt && (
                   <p className='text-gray-300 mt-4 italic'>
                     {creature.imagePrompt}
