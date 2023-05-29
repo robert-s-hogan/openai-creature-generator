@@ -1,7 +1,11 @@
 import Head from "next/head";
 import { useState } from "react";
 import styles from "./index.module.css";
+
 import { GiDoubleDragon } from "react-icons/gi";
+import { BiCopy, BiCheck } from "react-icons/bi";
+
+import { generateRandomValues } from "./api/generate";
 
 export default function Home() {
   const [challengeRating, setChallengeRating] = useState("");
@@ -9,13 +13,15 @@ export default function Home() {
   const [numberOfPlayers, setNumberOfPlayers] = useState("");
   const [playerLevel, setPlayerLevel] = useState("");
   const [result, setResult] = useState();
-  const [loading, setLoading] = useState(false); // Add loading state
+  const [loading, setLoading] = useState(false);
   const [image, setImage] = useState();
-  const [imagePrompt, setImagePrompt] = useState();
+  const [creature, setCreature] = useState({});
+  const [isCopied, setIsCopied] = useState(false);
 
   async function onSubmit(event) {
     event.preventDefault();
     setLoading(true); // Set loading to true when the form is submitted
+    const randomValues = generateRandomValues();
 
     try {
       const response = await fetch("/api/generate", {
@@ -24,23 +30,24 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          challengeRating,
           numberOfPlayers,
           playerLevel,
+          ...randomValues,
         }),
       });
 
       const data = await response.json();
       if (response.status !== 200) {
-        throw (
-          data.error ||
-          new Error(`Request failed with status ${response.status}`)
+        throw new Error(
+          data.error
+            ? `Request failed with message: ${data.error.message}`
+            : `Request failed with status ${response.status}`
         );
       }
 
       const creature = data.result;
       setResult(<CreatureCard creature={creature} />);
-      setImagePrompt(creature.imagePrompt);
+      setCreature(creature);
 
       // New code: Generate image
       try {
@@ -56,11 +63,10 @@ export default function Home() {
 
         const imageData = await imageResponse.json();
         if (imageResponse.status !== 200) {
-          throw (
-            imageData.error ||
-            new Error(
-              `Image request failed with status ${imageResponse.status}`
-            )
+          throw new Error(
+            imageData.error
+              ? `Image request failed with message: ${imageData.error.message}`
+              : `Image request failed with status ${imageResponse.status}`
           );
         }
 
@@ -85,10 +91,6 @@ export default function Home() {
   function CreatureCard({ creature }) {
     return (
       <div className='creature-card'>
-        <h2 className='text-2xl'>{creature.name}</h2>
-        <p>{creature.description}</p>
-
-        <hr className='my-2 h-0.5 border-t-0 bg-neutral-100' />
         <div className='flex-col'>
           <p>Armor Class: {creature.armorClass}</p>
           <p>Hit Points: {creature.hitPoints}</p>
@@ -122,7 +124,7 @@ export default function Home() {
           </div>
         </div>
         <hr className='my-2 h-0.5 border-t-0 bg-neutral-100' />
-        <p className='mb-1'>Actions:</p>
+        <p className='mb-3'>Actions:</p>
         <div className='space-y-2'>
           {creature.actions &&
             creature.actions.map((action, index) => (
@@ -135,7 +137,7 @@ export default function Home() {
             ))}
         </div>
         <hr className='my-2 h-0.5 border-t-0 bg-neutral-100' />
-        <p className='mb-1'>Special Abilities:</p>
+        <p className='mb-3'>Special Abilities:</p>
 
         <div className='space-y-2'>
           {creature.specialAbilities &&
@@ -152,6 +154,12 @@ export default function Home() {
     );
   }
 
+  function copyToClipboard() {
+    navigator.clipboard.writeText(image);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  }
+
   return (
     <div>
       <Head>
@@ -164,13 +172,6 @@ export default function Home() {
         <h3>Create DND Monster</h3>
         <form onSubmit={onSubmit}>
           <div className='flex flex-col space-y-4'>
-            <input
-              type='number'
-              name='challengeRating'
-              placeholder='Enter Challenge Rating'
-              value={challengeRating}
-              onChange={(e) => setChallengeRating(e.target.value)}
-            />
             <input
               type='number'
               name='numberOfPlayers'
@@ -192,34 +193,48 @@ export default function Home() {
         {loading ? (
           <div className='mt-12'>Loading...</div>
         ) : (
-          <div className='grid grid-cols-1 mt-24'>
-            <div
-              className={`grid gap-12 place-items-center font-mono ${
-                image ? `bg-gray-900` : ""
-              }`}>
-              <div
-                className={`${
-                  image ? `bg-gray-900 shadow-lg` : ""
-                } rounded-md p-6`}>
-                <div className='md:flex px-4 leading-none'>
-                  <div className='flex-col space-y-4'>
-                    {image && (
-                      <img
-                        src={image}
-                        alt='pic'
-                        className='h-72 w-full rounded-md transform border-4 border-gray-300 shadow-lg'
-                      />
-                    )}
-                    {imagePrompt && (
-                      <span className='text-gray-300 pt-4'>{imagePrompt}</span>
-                    )}
-                  </div>
+          <div
+            className={`my-24 ${
+              image ? `bg-gray-900 shadow-lg` : ""
+            } rounded-md p-6`}>
+            <div className='grid grid-cols-1 md:grid-cols-2 max-w-4xl gap-6 px-4 md:px-2 leading-none'>
+              <div className='text-gray-300 flex-col space-y-4'>
+                <h2 className='text-2xl'>{creature.name}</h2>
+                <p className='leading-5'>{creature.description}</p>
 
-                  <div className='text-gray-300 pl-4'>
-                    <div className={styles.result}>{result}</div>
+                {image && (
+                  <div>
+                    <div className='flex items-center justify-between bg-gray-600 rounded-t-md'>
+                      <p className='w-full p-1 px-2'>DALLE-2</p>
+                      <button
+                        onClick={copyToClipboard}
+                        className='flex justify-end text-gray-300 w-full p-1 px-2'>
+                        {isCopied ? (
+                          <BiCheck className='text-xl' />
+                        ) : (
+                          <BiCopy className='text-xl' />
+                        )}
+                      </button>
+                    </div>
+                    <img
+                      src={image}
+                      alt='pic'
+                      className='h-72 w-full rounded-md rounded-t-none transform shadow-lg mb-3'
+                    />
                   </div>
-                </div>
-                {/* <div className='flex justify-between items-center px-4 mb-4 w-full'>
+                )}
+                {/* {creature.imagePrompt && (
+                  <p className='text-gray-300 mt-4 italic'>
+                    {creature.imagePrompt}
+                  </p>
+                )} */}
+              </div>
+
+              <div className='text-gray-300 md:pl-4 pt-4'>
+                <div className={styles.result}>{result}</div>
+              </div>
+            </div>
+            {/* <div className='flex justify-between items-center px-4 mb-4 w-full'>
                 <div className='flex'>
                   <i className='material-icons mr-2 text-red-600'>
                     favorite_border
@@ -245,8 +260,6 @@ export default function Home() {
                   <i className='material-icons ml-2 text-yellow-600'>star</i>
                 </div>
               </div> */}
-              </div>
-            </div>
           </div>
         )}
       </main>
