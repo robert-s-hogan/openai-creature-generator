@@ -68,6 +68,8 @@ export default async function (req, res) {
 function generatePrompt(challengeRating, numberOfPlayers, playerLevel) {
   return `Create a detailed creature for a DND game suitable for a party of ${numberOfPlayers} players at level ${playerLevel} with a challenge rating of ${challengeRating}.
 
+  Higher challenge ratings should have more powerful creatures, and lower challenge ratings should have less powerful creatures.
+
     The creature should have the following properties in a JSON-like format:
 
     {

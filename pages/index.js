@@ -1,6 +1,7 @@
 import Head from "next/head";
 import { useState } from "react";
 import styles from "./index.module.css";
+import { GiDoubleDragon } from "react-icons/gi";
 
 export default function Home() {
   const [challengeRating, setChallengeRating] = useState("");
@@ -10,6 +11,7 @@ export default function Home() {
   const [result, setResult] = useState();
   const [loading, setLoading] = useState(false); // Add loading state
   const [image, setImage] = useState();
+  const [imagePrompt, setImagePrompt] = useState();
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -38,6 +40,7 @@ export default function Home() {
 
       const creature = data.result;
       setResult(<CreatureCard creature={creature} />);
+      setImagePrompt(creature.imagePrompt);
 
       // New code: Generate image
       try {
@@ -84,7 +87,7 @@ export default function Home() {
       <div className='creature-card'>
         <h2 className='text-2xl'>{creature.name}</h2>
         <p>{creature.description}</p>
-        <p>{creature.imagePrompt && creature.imagePrompt}</p>
+
         <hr className='my-2 h-0.5 border-t-0 bg-neutral-100' />
         <div className='flex-col'>
           <p>Armor Class: {creature.armorClass}</p>
@@ -119,7 +122,7 @@ export default function Home() {
           </div>
         </div>
         <hr className='my-2 h-0.5 border-t-0 bg-neutral-100' />
-        <p>Actions:</p>
+        <p className='mb-1'>Actions:</p>
         <div className='space-y-2'>
           {creature.actions &&
             creature.actions.map((action, index) => (
@@ -132,7 +135,7 @@ export default function Home() {
             ))}
         </div>
         <hr className='my-2 h-0.5 border-t-0 bg-neutral-100' />
-        <p>Special Abilities:</p>
+        <p className='mb-1'>Special Abilities:</p>
 
         <div className='space-y-2'>
           {creature.specialAbilities &&
@@ -157,34 +160,37 @@ export default function Home() {
       </Head>
 
       <main className={styles.main}>
-        <img src='/dog.png' className={styles.icon} />
+        <GiDoubleDragon className='text-6xl' />
         <h3>Create DND Monster</h3>
         <form onSubmit={onSubmit}>
-          <input
-            type='number'
-            name='challengeRating'
-            placeholder='Enter Challenge Rating'
-            value={challengeRating}
-            onChange={(e) => setChallengeRating(e.target.value)}
-          />
-          <input
-            type='number'
-            name='numberOfPlayers'
-            placeholder='Enter Number of Players'
-            value={numberOfPlayers}
-            onChange={(e) => setNumberOfPlayers(e.target.value)}
-          />
-          <input
-            type='number'
-            name='playerLevel'
-            placeholder='Enter Player Level'
-            value={playerLevel}
-            onChange={(e) => setPlayerLevel(e.target.value)}
-          />
-          <input type='submit' value='Generate Creature' />
+          <div className='flex flex-col space-y-4'>
+            <input
+              type='number'
+              name='challengeRating'
+              placeholder='Enter Challenge Rating'
+              value={challengeRating}
+              onChange={(e) => setChallengeRating(e.target.value)}
+            />
+            <input
+              type='number'
+              name='numberOfPlayers'
+              placeholder='Enter Number of Players'
+              value={numberOfPlayers}
+              onChange={(e) => setNumberOfPlayers(e.target.value)}
+            />
+            <input
+              type='number'
+              name='playerLevel'
+              placeholder='Enter Player Level'
+              value={playerLevel}
+              onChange={(e) => setPlayerLevel(e.target.value)}
+            />
+
+            <input type='submit' value='Generate Creature' />
+          </div>
         </form>
         {loading ? (
-          <div>Loading...</div>
+          <div className='mt-12'>Loading...</div>
         ) : (
           <div className='grid grid-cols-1 mt-24'>
             <div
@@ -196,13 +202,16 @@ export default function Home() {
                   image ? `bg-gray-900 shadow-lg` : ""
                 } rounded-md p-6`}>
                 <div className='md:flex px-4 leading-none'>
-                  <div className='flex-none'>
+                  <div className='flex-col space-y-4'>
                     {image && (
                       <img
                         src={image}
                         alt='pic'
                         className='h-72 w-full rounded-md transform border-4 border-gray-300 shadow-lg'
                       />
+                    )}
+                    {imagePrompt && (
+                      <span className='text-gray-300 pt-4'>{imagePrompt}</span>
                     )}
                   </div>
 
