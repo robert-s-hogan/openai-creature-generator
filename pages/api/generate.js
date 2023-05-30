@@ -1,5 +1,5 @@
 import { Configuration, OpenAIApi } from "openai";
-
+import Bottleneck from "bottleneck";
 import {
   calculateHitPoints,
   calculateStat,
@@ -34,6 +34,20 @@ export function generateRandomValues() {
   };
 }
 
+function isValidJSON(text) {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Defines a limiter that allows 2000 requests per minute
+const limiter = new Bottleneck({
+  minTime: (60 * 1000) / 2000,
+});
+
 export default async function (req, res) {
   if (!configuration.apiKey) {
     res.status(500).json({
@@ -60,21 +74,24 @@ export default async function (req, res) {
     // Generate random values and assign to a variable
     const randomValues = generateRandomValues();
 
-    const completion = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: generatePrompt(numberOfPlayers, playerLevel, randomValues),
-      temperature: 0.6,
-      max_tokens: 400,
-    });
+    const completion = await limiter.schedule(() =>
+      openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: generatePrompt(numberOfPlayers, playerLevel, randomValues),
+        temperature: 0.6,
+        max_tokens: 500,
+      })
+    );
 
     let creature;
-    try {
-      creature = JSON.parse(completion.data.choices[0].text.trim());
-    } catch (error) {
-      console.error(`Error parsing generated text into JSON: ${error.message}`);
+    let rawText = completion.data.choices[0].text.trim();
+    if (isValidJSON(rawText)) {
+      creature = JSON.parse(rawText);
+    } else {
+      console.error(`Invalid JSON received: ${rawText}`);
       res.status(500).json({
         error: {
-          message: "An error occurred during your request.",
+          message: "Received invalid JSON from the OpenAI API.",
         },
       });
       return;

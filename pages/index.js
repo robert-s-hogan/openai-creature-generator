@@ -38,14 +38,11 @@ export default function Home() {
         }),
       });
 
-      const data = await response.json();
-      if (response.status !== 200) {
-        throw new Error(
-          data.error
-            ? `Request failed with message: ${data.error.message}`
-            : `Request failed with status ${response.status}`
-        );
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
       }
+
+      const data = await response.json();
 
       const creature = data.result;
       setResult(<CreatureCard creature={creature} />);
